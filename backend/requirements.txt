@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-dotenv
+httpx
+python-whois
+dnspython
+pymongo
+motor
+python-Levenshtein
+tldextract
+slowapi
