@@ -1,0 +1,65 @@
+PhishGuard Work Progress
+
+Completed Backend Structure:
+
+backend/
+│
+├── app/
+│   ├── routers/
+│   │   ├── scan.py
+│   │   ├── history.py
+│   │   └── report.py
+│   │
+│   ├── services/
+│   │   ├── virustotal.py
+│   │   ├── urlhaus.py
+│   │   ├── whois_dns.py
+│   │   └── typosquatch.py
+    |   |__deobfuscator.py
+│   │
+│   ├── core/
+│   │   ├── config.py
+│   │   └── risk_engine.py
+│   │
+│   ├── db/
+│   │   └── mongo.py
+│   │
+│   ├── models/
+│   │   └── schemas.py
+│   │
+│   └── main.py
+│
+├── requirements.txt
+├── .env
+└── .gitignore
+
+Upcoming Work:
+- ML model integration
+- React dashboard
+- Chrome extension
+- Deployment
+- Threat analytics
+- Report visualization
+
+
+
+Guys,to run the backend,do the steps below in terminal
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+create .env
+I have sent you the .env API KEYS urls in whatsapp group
+
+cd backend
+uvicorn app.main:app --reload
+
+http://127.0.0.1:8000/docs    this is where you can upload any url and check the score and all
+
+
+
+
+above steps are when u r doing it for first time,if u want to reopen project,just do below steps
+venv\Scripts\activate  //in root directory 
+cd backend
+uvicorn app.main:app --reload  //auto reloads when code changes,dont need to do again and again
