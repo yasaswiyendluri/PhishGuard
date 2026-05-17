@@ -23,7 +23,7 @@ async def check_virustotal(url: str) -> dict:
     headers = {"x-apikey": VIRUSTOTAL_API_KEY}
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=8) as client:
 
             # ── Step 1: Submit URL ─────────────────────────────
             submit_response = await client.post(

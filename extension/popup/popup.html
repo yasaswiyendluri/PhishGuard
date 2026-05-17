@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>PhishGuard</title>
+        <link rel="stylesheet" href="popup.css" />
+    </head>
+    <body>
+        <!-- ── HEADER — changes color based on result ── -->
+        <div class="header" id="header">
+            <div class="header-left">
+                <div class="shield-icon" id="shieldIcon">🛡️</div>
+                <div class="header-text">
+                    <p class="app-name">PhishGuard</p>
+                    <p class="domain-name" id="domainName">Scanning...</p>
+                </div>
+            </div>
+            <div class="badge" id="riskBadge">—</div>
+        </div>
+
+        <!-- ── LOADING STATE ── -->
+        <div class="loading-state" id="loadingState">
+            <div class="spinner"></div>
+            <p>Analyzing URL...</p>
+        </div>
+
+        <!-- ── RESULT STATE (hidden until scan completes) ── -->
+        <div class="result-state hidden" id="resultState">
+            <!-- Risk score + bar -->
+            <div class="score-section">
+                <div class="score-row">
+                    <span class="score-label">Risk Score</span>
+                    <span class="score-value" id="scoreValue">0 / 100</span>
+                </div>
+                <div class="score-bar-bg">
+                    <div class="score-bar-fill" id="scoreBarFill"></div>
+                </div>
+            </div>
+
+            <!-- Explanation text (only shown if threat found) -->
+            <div class="explanation hidden" id="explanationBox">
+                <p id="explanationText"></p>
+            </div>
+
+            <!-- 4 intel cards -->
+            <div class="cards-grid">
+                <div class="card">
+                    <p class="card-label">VirusTotal</p>
+                    <p class="card-value" id="vtValue">—</p>
+                </div>
+                <div class="card">
+                    <p class="card-label">Domain Age</p>
+                    <p class="card-value" id="domainAgeValue">—</p>
+                </div>
+                <div class="card">
+                    <p class="card-label">URLHaus</p>
+                    <p class="card-value" id="urlhausValue">—</p>
+                </div>
+                <div class="card">
+                    <p class="card-label">Typosquat</p>
+                    <p class="card-value" id="typosquatValue">—</p>
+                </div>
+            </div>
+
+            <!-- Link to dashboard -->
+            <button class="dashboard-btn" id="dashboardBtn">View full report in dashboard ↗</button>
+        </div>
+
+        <!-- ── ERROR STATE ── -->
+        <div class="error-state hidden" id="errorState">
+            <p>⚠️ Could not connect to PhishGuard backend.</p>
+            <p class="error-sub">Make sure the server is running.</p>
+        </div>
+
+        <script src="popup.js"></script>
+    </body>
+</html>

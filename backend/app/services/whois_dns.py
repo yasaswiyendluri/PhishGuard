@@ -3,6 +3,8 @@
 # 1. WHOIS — gets domain registration info (age, registrar)
 # 2. DNS   — checks DNS records for suspicious patterns
 
+import asyncio
+
 import whois
 import dns.resolver
 import tldextract
@@ -25,15 +27,19 @@ async def get_whois_dns(url: str) -> dict:
 
 async def _get_whois(domain: str) -> dict:
     try:
-        w = whois.whois(domain)
-        creation_date = w.creation_date
+        loop = asyncio.get_event_loop()
+        w = await asyncio.wait_for(
+            loop.run_in_executor(None, whois.whois, domain),
+            timeout=5.0  # give up after 5 seconds
+        )
 
+        creation_date = w.creation_date
         if isinstance(creation_date, list):
             creation_date = creation_date[0]
 
         if creation_date:
-            if creation_date.tzinfo is None:
-                creation_date = creation_date.replace(tzinfo=timezone.utc)
+            if creation_date.tzinfo is not None:
+                creation_date = creation_date.replace(tzinfo=None)
 
             age_days = (
                 datetime.now(timezone.utc) - creation_date
@@ -46,6 +52,15 @@ async def _get_whois(domain: str) -> dict:
             "domain_age_days": age_days,
             "registrar": str(w.registrar) if w.registrar else "unknown",
             "creation_date": str(creation_date),
+        }
+    except asyncio.TimeoutError:
+        # WHOIS timed out — return safe default, don't block the scan
+        return {
+            "domain": domain,
+            "domain_age_days": 365,
+            "registrar": "unknown",
+            "creation_date": "unknown",
+            "whois_error": "timeout"
         }
     except Exception as e:
         return {
