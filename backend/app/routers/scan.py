@@ -2,16 +2,14 @@
 # Handles POST /api/scan
 # This is like a route file in Express — router.post('/scan', handler)
 
-
-# SANJANA DUMMY SERVICES ARE USED,REPLACE LATER
-
-
+import asyncio
+from app.ml.predictor import predict as ml_predict
 from fastapi import APIRouter, Request, HTTPException
 from slowapi.util import get_remote_address
 from slowapi import Limiter
-from datetime import datetime
 import uuid
 
+from datetime import datetime, timezone
 from app.models.schemas import ScanRequest, ScanResponse
 from app.core.risk_engine import calculate_risk
 from app.services.virustotal import check_virustotal
@@ -40,7 +38,7 @@ async def scan_url(request: Request, body: ScanRequest):
     # Step 2 — run all threat intelligence checks concurrently
     # asyncio.gather runs all these AT THE SAME TIME (not one by one)
     # This keeps response time under 500ms — a stated project goal
-    import asyncio
+
     vt_result, urlhaus_result, whois_result, typo_result = await asyncio.gather(
         check_virustotal(clean_url),
         check_urlhaus(clean_url),
@@ -48,12 +46,18 @@ async def scan_url(request: Request, body: ScanRequest):
         check_typosquatting(body.url),
     )
 
+    # ML prediction runs separately (it's CPU-bound, not async)
+    # run_in_executor runs it in a thread so it doesn't block the server
+    loop = asyncio.get_event_loop()
+    ml_result = await loop.run_in_executor(None, ml_predict, body.url)
+
     # Step 3 — pass all results into your risk engine
     risk_data = calculate_risk(
         vt=vt_result,
         urlhaus=urlhaus_result,
         whois=whois_result,
         typo=typo_result,
+        ml=ml_result
     )
 
     # Step 4 — build the final response
@@ -67,11 +71,11 @@ async def scan_url(request: Request, body: ScanRequest):
         explanation=risk_data["explanation"],
         features=whois_result,
         threat_intel={"virustotal": vt_result,
-                      "urlhaus": urlhaus_result, "typosquatting": typo_result},
-        timestamp=datetime.utcnow(),
+                      "urlhaus": urlhaus_result, "typosquatting": typo_result, "ml": ml_result},
+        timestamp=datetime.now(timezone.utc),
     )
 
     # Step 5 — save to MongoDB for history/analytics
-    await save_scan(response.dict())
+    await save_scan(response.model_dump())
 
     return response
