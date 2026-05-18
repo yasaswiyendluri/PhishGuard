@@ -1,5 +1,5 @@
 import RiskBadge from "./RiskBadge"
-import { formatTime } from "../utils/risk"
+import { formatTime, mlDisplay } from "../utils/risk"
 
 function ReportsTable({ scans = [], loading }) {
   if (loading) {
@@ -31,7 +31,8 @@ function ReportsTable({ scans = [], loading }) {
             <tr className="border-b border-slate-800 text-slate-500 text-xs uppercase tracking-wider">
               <th className="pb-3 pr-4 font-medium">URL</th>
               <th className="pb-3 pr-4 font-medium">Risk</th>
-              <th className="pb-3 pr-4 font-medium">Score</th>
+              <th className="pb-3 pr-4 font-medium">ML Score</th>
+              <th className="pb-3 pr-4 font-medium">Composite</th>
               <th className="pb-3 pr-4 font-medium">Verdict</th>
               <th className="pb-3 font-medium">When</th>
             </tr>
@@ -45,6 +46,7 @@ function ReportsTable({ scans = [], loading }) {
                 <td className="py-4 pr-4">
                   <RiskBadge level={scan.risk_level} />
                 </td>
+                <td className="py-4 pr-4 text-cyan-300 font-medium">{mlDisplay(scan)}</td>
                 <td className="py-4 pr-4 text-slate-300">{scan.risk_score}%</td>
                 <td className="py-4 pr-4 capitalize text-slate-400">{scan.prediction}</td>
                 <td className="py-4 text-slate-500">{formatTime(scan.timestamp)}</td>

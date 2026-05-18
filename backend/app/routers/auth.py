@@ -36,14 +36,20 @@ async def register(body: UserRegister):
         raise HTTPException(status_code=400, detail="Username already taken")
 
     user_id = str(uuid.uuid4())
-    user_doc = {
-        "user_id": user_id,
-        "username": username,
-        "email": email,
-        "password_hash": hash_password(body.password),
-        "created_at": datetime.now(timezone.utc),
-    }
-    user = await create_user(user_doc)
+    try:
+        user_doc = {
+            "user_id": user_id,
+            "username": username,
+            "email": email,
+            "password_hash": hash_password(body.password),
+            "created_at": datetime.now(timezone.utc),
+        }
+        user = await create_user(user_doc)
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Database unavailable. Ensure MongoDB is running on localhost:27017",
+        )
     token = create_access_token(user_id)
 
     return TokenResponse(

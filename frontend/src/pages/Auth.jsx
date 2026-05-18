@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate, Navigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
+import { authErrorMessage } from "../utils/risk"
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true)
@@ -37,8 +38,7 @@ function Auth() {
       }
       navigate("/dashboard")
     } catch (err) {
-      const detail = err.response?.data?.detail
-      setError(typeof detail === "string" ? detail : "Authentication failed. Please try again.")
+      setError(authErrorMessage(err))
     } finally {
       setLoading(false)
     }

@@ -1,16 +1,12 @@
 # app/routers/scan.py
 # Handles POST /api/scan
-# This is like a route file in Express — router.post('/scan', handler)
-
-
-# SANJANA DUMMY SERVICES ARE USED,REPLACE LATER
-
 
 from fastapi import APIRouter, Request, Depends
 from slowapi.util import get_remote_address
 from slowapi import Limiter
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
+import asyncio
 
 from app.models.schemas import ScanRequest, ScanResponse
 from app.core.risk_engine import calculate_risk
@@ -21,31 +17,24 @@ from app.services.deobfuscator import deobfuscate_url
 from app.services.typosquatch import check_typosquatting
 from app.db.mongo import save_scan
 from app.core.security import get_current_user
+from app.ml.predictor import predict
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/scan", response_model=ScanResponse)
-@limiter.limit("10/minute")  # max 10 scans per minute per IP
+@limiter.limit("10/minute")
 async def scan_url(
     request: Request,
     body: ScanRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """
-    Main scan endpoint.
-    Takes a URL, runs all analysis, returns a full threat report.
-    """
-
-    # Step 1 — clean/decode the URL first
-    # e.g. bit.ly/xyz → actual URL, hex encoded → readable
+    """Main scan endpoint — ML + CTI pipeline."""
     clean_url = await deobfuscate_url(body.url)
 
-    # Step 2 — run all threat intelligence checks concurrently
-    # asyncio.gather runs all these AT THE SAME TIME (not one by one)
-    # This keeps response time under 500ms — a stated project goal
-    import asyncio
+    ml_result = predict(clean_url)
+
     vt_result, urlhaus_result, whois_result, typo_result = await asyncio.gather(
         check_virustotal(clean_url),
         check_urlhaus(clean_url),
@@ -53,16 +42,15 @@ async def scan_url(
         check_typosquatting(body.url),
     )
 
-    # Step 3 — pass all results into your risk engine
     risk_data = calculate_risk(
         vt=vt_result,
         urlhaus=urlhaus_result,
         whois=whois_result,
         typo=typo_result,
+        ml=ml_result,
     )
 
-    # Step 4 — build the final response
-    scan_id = str(uuid.uuid4())  # unique ID like crypto.randomUUID() in JS
+    scan_id = str(uuid.uuid4())
     response = ScanResponse(
         scan_id=scan_id,
         user_id=current_user["user_id"],
@@ -71,13 +59,19 @@ async def scan_url(
         risk_level=risk_data["level"],
         prediction=risk_data["prediction"],
         explanation=risk_data["explanation"],
+        ml_confidence=ml_result.get("ml_confidence") if ml_result.get("ml_ready") else None,
+        ml_prediction=ml_result.get("ml_prediction") if ml_result.get("ml_ready") else None,
+        ml_ready=bool(ml_result.get("ml_ready")),
         features=whois_result,
-        threat_intel={"virustotal": vt_result,
-                      "urlhaus": urlhaus_result, "typosquatting": typo_result},
-        timestamp=datetime.utcnow(),
+        threat_intel={
+            "ml": ml_result,
+            "virustotal": vt_result,
+            "urlhaus": urlhaus_result,
+            "typosquatting": typo_result,
+        },
+        timestamp=datetime.now(timezone.utc),
     )
 
-    # Step 5 — save to MongoDB for history/analytics
-    await save_scan(response.model_dump())
+    await save_scan(response.model_dump(mode="json"))
 
     return response

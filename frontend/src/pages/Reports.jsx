@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import Layout from "../components/Layout"
 import RiskBadge from "../components/RiskBadge"
 import API from "../services/api"
-import { downloadReport, formatTime } from "../utils/risk"
+import { downloadReport, formatTime, formatExactTime, mlDisplay } from "../utils/risk"
 
 function Reports() {
   const [scans, setScans] = useState([])
@@ -64,10 +64,14 @@ function Reports() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm mb-4">
                 <div>
-                  <p className="text-slate-500 text-xs mb-1">Risk score</p>
+                  <p className="text-slate-500 text-xs mb-1">Composite risk</p>
                   <p className="font-semibold text-white">{report.risk_score}%</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 text-xs mb-1">ML confidence</p>
+                  <p className="font-semibold text-cyan-300">{mlDisplay(report)}</p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs mb-1">Verdict</p>
@@ -75,7 +79,9 @@ function Reports() {
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs mb-1">Scanned</p>
-                  <p className="text-slate-300">{formatTime(report.timestamp)}</p>
+                  <p className="text-slate-300" title={formatExactTime(report.timestamp)}>
+                    {formatTime(report.timestamp)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs mb-1">Report ID</p>

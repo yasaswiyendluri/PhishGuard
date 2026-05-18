@@ -21,15 +21,18 @@ try:
     model = package["model"]
     scaler = package["scaler"]
     feature_names = package["feature_names"]
-    # The URLFeatureExtractor class is saved inside the pkl
-    # URLFeatureExtractor = package["feature_extractor_class"]
     extractor = URLFeatureExtractor()
     ML_READY = True
     print(
-        f"✅ ML Model loaded: {package['model_name']} | Accuracy: {package['accuracy']:.4f}")
+        f"[ML] Model loaded: {package['model_name']} | Accuracy: {package['accuracy']:.4f}"
+    )
 except Exception as e:
     ML_READY = False
-    print(f"⚠️  ML Model not loaded: {e}")
+    model = None
+    scaler = None
+    feature_names = []
+    extractor = None
+    print(f"[ML] Model not loaded: {e}")
 
 
 def predict(url: str) -> dict:

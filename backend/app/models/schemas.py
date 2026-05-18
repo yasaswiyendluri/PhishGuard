@@ -46,13 +46,16 @@ class ScanResponse(BaseModel):
     scan_id: str
     user_id: Optional[str] = None
     url: str
-    risk_score: int                 # 0-100, your weighted engine output
-    risk_level: str                 # "LOW" / "MEDIUM" / "HIGH" / "CRITICAL"
-    prediction: str                 # "safe" or "phishing"
-    explanation: str                # human-readable reason e.g. "Domain is 2 days old..."
-    features: Dict[str, Any]        # all extracted features (domain age, etc.)
-    threat_intel: Dict[str, Any]    # VirusTotal + URLHaus results
-    timestamp: datetime             # when was this scanned
+    risk_score: int
+    risk_level: str
+    prediction: str
+    explanation: str
+    ml_confidence: Optional[int] = None
+    ml_prediction: Optional[str] = None
+    ml_ready: bool = False
+    features: Dict[str, Any]
+    threat_intel: Dict[str, Any]
+    timestamp: datetime
 
 # ── Shape of a record stored in MongoDB ──────────────────────
 

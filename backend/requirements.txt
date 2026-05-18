@@ -10,5 +10,9 @@ python-Levenshtein
 tldextract
 slowapi
 python-jose[cryptography]
-passlib[bcrypt]
+bcrypt
 pydantic[email]
+scikit-learn
+joblib
+numpy
+xgboost
