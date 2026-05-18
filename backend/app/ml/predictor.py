@@ -78,10 +78,10 @@ def predict(url: str) -> dict:
         confidence = int(phishing_probability * 100)
 
         return {
-            "ml_score": phishing_probability,
-            "ml_prediction": prediction,
-            "ml_confidence": confidence,
-            "ml_ready": True
+            "ml_score": float(phishing_probability),
+            "ml_prediction": str(prediction),
+            "ml_confidence": int(confidence),
+            "ml_ready": True,
         }
 
     except Exception as e:

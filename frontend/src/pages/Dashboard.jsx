@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react"
 import Layout from "../components/Layout"
 import DashboardCards from "../components/DashboardCards"
@@ -41,7 +42,8 @@ function Dashboard() {
 
     try {
       const { data } = await API.post("/api/scan", { url: url.trim() })
-      setScanResult(data)
+      // Use API body as-is; ensure ML fields visible even if proxy strips nested intel
+      setScanResult(data?.data ?? data)
       setUrl("")
       await refresh()
     } catch (err) {

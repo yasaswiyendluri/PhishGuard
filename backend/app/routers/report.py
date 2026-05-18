@@ -4,6 +4,7 @@
 
 from fastapi import APIRouter, HTTPException
 from app.db.mongo import get_scan_by_id
+from app.db.scan_serialize import enrich_scan_ml_fields
 
 router = APIRouter()
 
@@ -14,4 +15,4 @@ async def get_report(scan_id: str):
     report = await get_scan_by_id(scan_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    return report
+    return enrich_scan_ml_fields(dict(report))

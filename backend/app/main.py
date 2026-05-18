@@ -10,6 +10,9 @@ from slowapi.errors import RateLimitExceeded
 
 from app.routers import scan, history, report, auth
 
+# Load ML model at startup (predictor prints status on import)
+from app.ml import predictor as _ml_predictor  # noqa: F401
+
 # Rate limiter setup — prevents abuse (10 scans/minute per IP)
 limiter = Limiter(key_func=get_remote_address)
 
@@ -43,3 +46,9 @@ app.include_router(report.router, prefix="/api", tags=["Report"])
 @app.get("/")
 def root():
     return {"message": "PhishGuard API is running", "docs": "/docs"}
+
+
+@app.get("/api/ml/status")
+def ml_status():
+    from app.ml.predictor import ML_READY
+    return {"ml_ready": bool(ML_READY)}

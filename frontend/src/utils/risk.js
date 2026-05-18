@@ -69,15 +69,83 @@ export function formatExactTime(ts) {
   })
 }
 
+function pickNum(v) {
+  if (v === null || v === undefined) return null
+  if (typeof v === "number" && Number.isFinite(v)) return v
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  return null
+}
+
+/** Read ML block from any API shape (snake_case, camelCase, nested). */
+export function getMlBlock(scan) {
+  if (!scan || typeof scan !== "object") return null
+
+  const intel = scan.threat_intel || scan.threatIntel || {}
+  const nested = intel.ml || intel.ML || scan.ml || null
+
+  if (nested && typeof nested === "object") return nested
+
+  if (
+    scan.ml_confidence != null ||
+    scan.mlConfidence != null ||
+    scan.ml_score != null ||
+    scan.mlScore != null
+  ) {
+    return {
+      ml_confidence: scan.ml_confidence ?? scan.mlConfidence,
+      ml_score: scan.ml_score ?? scan.mlScore,
+      ml_ready: scan.ml_ready ?? scan.mlReady,
+      ml_prediction: scan.ml_prediction ?? scan.mlPrediction,
+    }
+  }
+
+  return null
+}
+
+/** Returns { percent: number|null, label: string, ready: boolean } */
+export function extractMlConfidence(scan) {
+  const ml = getMlBlock(scan)
+  const ready =
+    scan?.ml_ready === true ||
+    scan?.mlReady === true ||
+    ml?.ml_ready === true ||
+    ml?.mlReady === true
+
+  const tryConf = (v) => {
+    const n = pickNum(v)
+    if (n == null) return null
+    if (n >= 0 && n <= 1) return Math.round(n * 100)
+    if (n >= 0 && n <= 100) return Math.round(n)
+    return null
+  }
+
+  const sources = [
+    scan?.ml_confidence,
+    scan?.mlConfidence,
+    ml?.ml_confidence,
+    ml?.mlConfidence,
+  ]
+
+  for (const s of sources) {
+    const p = tryConf(s)
+    if (p != null) return { percent: p, label: `${p}%`, ready: ready || p > 0 }
+  }
+
+  const scoreSources = [scan?.ml_score, scan?.mlScore, ml?.ml_score, ml?.mlScore]
+  for (const s of scoreSources) {
+    const p = tryConf(s)
+    if (p != null) return { percent: p, label: `${p}%`, ready: true }
+  }
+
+  if (ready) return { percent: 0, label: "0%", ready: true }
+  return { percent: null, label: "Offline", ready: false }
+}
+
 export function mlDisplay(scan) {
-  if (scan?.ml_ready && scan.ml_confidence != null) {
-    return `${scan.ml_confidence}%`
-  }
-  const ml = scan?.threat_intel?.ml
-  if (ml?.ml_ready && ml.ml_confidence != null) {
-    return `${ml.ml_confidence}%`
-  }
-  return "—"
+  return extractMlConfidence(scan).label
 }
 
 export function downloadReport(scan) {

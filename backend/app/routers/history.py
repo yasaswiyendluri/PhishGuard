@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.db.mongo import get_recent_scans, get_user_stats
+from app.db.scan_serialize import enrich_scan_ml_fields
 from app.core.security import get_current_user
 
 router = APIRouter()
@@ -14,6 +15,7 @@ async def get_history(
     """Returns the last N scans for the authenticated analyst."""
     user_id = current_user["user_id"]
     scans = await get_recent_scans(limit, user_id=user_id)
+    scans = [enrich_scan_ml_fields(dict(s)) for s in scans]
     return {"scans": scans, "count": len(scans)}
 
 
@@ -22,6 +24,7 @@ async def get_stats(current_user: dict = Depends(get_current_user)):
     """Dashboard aggregate stats for the current user."""
     user_id = current_user["user_id"]
     scans = await get_recent_scans(limit=500, user_id=user_id)
+    scans = [enrich_scan_ml_fields(dict(s)) for s in scans]
     by_level = await get_user_stats(user_id)
 
     total = len(scans)

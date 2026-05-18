@@ -1,5 +1,5 @@
 import RiskBadge from "./RiskBadge"
-import { mlDisplay, downloadReport } from "../utils/risk"
+import { mlDisplay, extractMlConfidence, downloadReport } from "../utils/risk"
 
 function CTICard({ title, subtitle, value, detail, accent = "text-cyan-300" }) {
   return (
@@ -22,9 +22,9 @@ function ScanResultPanel({ scan }) {
   const typo = intel.typosquatting || {}
   const whois = scan.features || {}
 
-  const mlConfidence = scan.ml_confidence ?? ml.ml_confidence
   const mlPrediction = scan.ml_prediction ?? ml.ml_prediction
   const mlReady = scan.ml_ready ?? ml.ml_ready
+  const mlInfo = extractMlConfidence(scan)
 
   return (
     <div className="mt-6 space-y-5">
@@ -53,7 +53,13 @@ function ScanResultPanel({ scan }) {
           </div>
           <div>
             <p className="text-slate-500 text-xs mb-1">ML confidence</p>
-            <p className="text-xl font-bold text-cyan-300">{mlDisplay(scan)}</p>
+            <p
+              className={`text-xl font-bold ${
+                mlInfo.label === "Offline" ? "text-slate-500" : "text-cyan-300"
+              }`}
+            >
+              {mlInfo.label}
+            </p>
           </div>
           <div>
             <p className="text-slate-500 text-xs mb-1">Verdict</p>
@@ -78,9 +84,19 @@ function ScanResultPanel({ scan }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
           <CTICard
             title="ML Classifier"
-            value={mlReady && mlConfidence != null ? `${mlConfidence}%` : "—"}
-            subtitle={mlReady ? mlPrediction : "Model unavailable"}
-            detail={mlReady ? "XGBoost phishing probability" : "Check model file in backend/ml"}
+            value={mlDisplay(scan)}
+            subtitle={
+              mlInfo.ready && mlPrediction
+                ? mlPrediction
+                : mlInfo.label === "Offline"
+                  ? "Restart backend — see /api/ml/status"
+                  : "—"
+            }
+            detail={
+              mlInfo.ready
+                ? "RandomForest phishing probability"
+                : "Model not loaded (backend/app/ml/phishing_detector_enhanced.pkl)"
+            }
             accent={mlPrediction === "phishing" ? "text-red-300" : "text-emerald-300"}
           />
           <CTICard

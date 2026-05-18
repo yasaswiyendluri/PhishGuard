@@ -51,6 +51,7 @@ class ScanResponse(BaseModel):
     prediction: str
     explanation: str
     ml_confidence: Optional[int] = None
+    ml_score: Optional[float] = None  # phishing probability 0.0–1.0 (always from model when available)
     ml_prediction: Optional[str] = None
     ml_ready: bool = False
     features: Dict[str, Any]

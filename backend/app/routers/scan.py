@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import uuid
 import asyncio
 
-from app.models.schemas import ScanRequest, ScanResponse
+from app.models.schemas import ScanRequest
 from app.core.risk_engine import calculate_risk
 from app.services.virustotal import check_virustotal
 from app.services.urlhaus import check_urlhaus
@@ -18,22 +18,25 @@ from app.services.typosquatch import check_typosquatting
 from app.db.mongo import save_scan
 from app.core.security import get_current_user
 from app.ml.predictor import predict
+from app.ml.ml_utils import normalize_ml_result
+from app.db.scan_serialize import enrich_scan_ml_fields
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 
-@router.post("/scan", response_model=ScanResponse)
+@router.post("/scan")
 @limiter.limit("10/minute")
 async def scan_url(
     request: Request,
     body: ScanRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """Main scan endpoint — ML + CTI pipeline."""
+    """Main scan endpoint — ML + CTI pipeline. Returns plain JSON with guaranteed ML fields."""
     clean_url = await deobfuscate_url(body.url)
 
-    ml_result = predict(clean_url)
+    # ML runs on original URL (features) and cleaned URL — use body.url for consistency
+    ml_result = normalize_ml_result(predict(body.url))
 
     vt_result, urlhaus_result, whois_result, typo_result = await asyncio.gather(
         check_virustotal(clean_url),
@@ -51,27 +54,38 @@ async def scan_url(
     )
 
     scan_id = str(uuid.uuid4())
-    response = ScanResponse(
-        scan_id=scan_id,
-        user_id=current_user["user_id"],
-        url=body.url,
-        risk_score=risk_data["score"],
-        risk_level=risk_data["level"],
-        prediction=risk_data["prediction"],
-        explanation=risk_data["explanation"],
-        ml_confidence=ml_result.get("ml_confidence") if ml_result.get("ml_ready") else None,
-        ml_prediction=ml_result.get("ml_prediction") if ml_result.get("ml_ready") else None,
-        ml_ready=bool(ml_result.get("ml_ready")),
-        features=whois_result,
-        threat_intel={
+    ready = ml_result["ml_ready"]
+    ml_confidence_val = ml_result["ml_confidence"] if ready else None
+    ml_score_val = ml_result["ml_score"] if ready else None
+    ml_prediction_val = (
+        ml_result["ml_prediction"]
+        if ready and ml_result["ml_prediction"] not in ("unknown",)
+        else None
+    )
+
+    payload = {
+        "scan_id": scan_id,
+        "user_id": current_user["user_id"],
+        "url": body.url,
+        "risk_score": risk_data["score"],
+        "risk_level": risk_data["level"],
+        "prediction": risk_data["prediction"],
+        "explanation": risk_data["explanation"],
+        "ml_confidence": ml_confidence_val,
+        "ml_score": ml_score_val,
+        "ml_prediction": ml_prediction_val,
+        "ml_ready": ready,
+        "features": whois_result,
+        "threat_intel": {
             "ml": ml_result,
             "virustotal": vt_result,
             "urlhaus": urlhaus_result,
             "typosquatting": typo_result,
         },
-        timestamp=datetime.now(timezone.utc),
-    )
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
-    await save_scan(response.model_dump(mode="json"))
+    payload = enrich_scan_ml_fields(payload)
+    await save_scan(payload)
 
-    return response
+    return payload
