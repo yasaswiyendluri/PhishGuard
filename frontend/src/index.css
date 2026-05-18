@@ -1,0 +1,63 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+:root {
+  --bg: #070b12;
+  --panel: #0d131c;
+  --accent: #22d3ee;
+  --accent-2: #10b981;
+}
+
+body {
+  font-family: "DM Sans", system-ui, sans-serif;
+  background: var(--bg);
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.input-field {
+  width: 100%;
+  background: #111827;
+  color: #f1f5f9;
+  border: 1px solid #1e293b;
+  border-radius: 0.625rem;
+  padding: 0.75rem 1rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input-field:focus {
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #22d3ee, #10b981);
+  color: #042f2e;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.625rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  border-radius: 1rem;
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
