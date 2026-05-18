@@ -9,3 +9,6 @@ motor
 python-Levenshtein
 tldextract
 slowapi
+python-jose[cryptography]
+bcrypt>=4.0.0
+pydantic[email]

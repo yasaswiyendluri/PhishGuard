@@ -6,7 +6,7 @@
 # SANJANA DUMMY SERVICES ARE USED,REPLACE LATER
 
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, Depends
 from slowapi.util import get_remote_address
 from slowapi import Limiter
 from datetime import datetime
@@ -20,6 +20,7 @@ from app.services.whois_dns import get_whois_dns
 from app.services.deobfuscator import deobfuscate_url
 from app.services.typosquatch import check_typosquatting
 from app.db.mongo import save_scan
+from app.core.security import get_current_user
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -27,7 +28,11 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/scan", response_model=ScanResponse)
 @limiter.limit("10/minute")  # max 10 scans per minute per IP
-async def scan_url(request: Request, body: ScanRequest):
+async def scan_url(
+    request: Request,
+    body: ScanRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """
     Main scan endpoint.
     Takes a URL, runs all analysis, returns a full threat report.
@@ -60,6 +65,7 @@ async def scan_url(request: Request, body: ScanRequest):
     scan_id = str(uuid.uuid4())  # unique ID like crypto.randomUUID() in JS
     response = ScanResponse(
         scan_id=scan_id,
+        user_id=current_user["user_id"],
         url=body.url,
         risk_score=risk_data["score"],
         risk_level=risk_data["level"],
@@ -72,6 +78,6 @@ async def scan_url(request: Request, body: ScanRequest):
     )
 
     # Step 5 — save to MongoDB for history/analytics
-    await save_scan(response.dict())
+    await save_scan(response.model_dump())
 
     return response
