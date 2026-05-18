@@ -1,83 +1,114 @@
-# app/core/risk_engine.py
-# YOUR custom risk scoring logic — this is what makes PhishGuard unique
-# Combines ML + VirusTotal + WHOIS + Typosquatting into one score
+# backend/app/core/risk_engine.py
+# Updated to include ML score in the weighted risk calculation
+import tldextract
 
-def calculate_risk(vt: dict, urlhaus: dict, whois: dict, typo: dict) -> dict:
-    """
-    Combines all intelligence sources into a single risk score (0–100).
 
-    Weights:
-    - VirusTotal detections : 40%
-    - Domain age (WHOIS)    : 25%
-    - URLHaus blacklist     : 20%
-    - Typosquatting         : 15%
-    -DNS flags              :10%
-    Total max               :110 capped at 100
-    ML model score will be added here once teammate delivers model.pkl
-    At that point weights will shift:
-    - ML score              : 30%
-    - VirusTotal            : 30%
-    - Domain age            : 20%
-    - URLHaus               : 10%
-    - Typosquatting         : 10%
+def calculate_risk(vt: dict, urlhaus: dict, whois: dict, typo: dict, ml: dict = None) -> dict:
     """
+    Combines all intelligence sources into a single risk score (0-100).
+
+    Weights WITH ML model:
+    - ML score          : 30 pts
+    - VirusTotal        : 30 pts
+    - Domain age        : 20 pts
+    - URLHaus           : 10 pts
+    - Typosquatting     : 10 pts
+    - DNS flags         : 10 pts (bonus, score capped at 100)
+
+    Weights WITHOUT ML (fallback):
+    - VirusTotal        : 40 pts
+    - Domain age        : 25 pts
+    - URLHaus           : 20 pts
+    - Typosquatting     : 15 pts
+    - DNS flags         : 10 pts
+    """
+    # ── Whitelist — well-known legitimate domains ──────────
+    # These are so established that ML false positives should be overridden
+    domain = whois.get("domain", "")
+    WHITELIST = [
+        "google.com", "youtube.com", "facebook.com", "amazon.com",
+        "microsoft.com", "apple.com", "twitter.com", "instagram.com",
+        "linkedin.com", "github.com", "wikipedia.org", "reddit.com",
+        "netflix.com", "whatsapp.com", "yahoo.com", "bing.com"
+    ]
+    if any(domain.endswith(w) for w in WHITELIST):
+        return {
+            "score": 0,
+            "level": "LOW",
+            "prediction": "safe",
+            "explanation": "No major threats detected",
+            "ml_used": False
+        }
 
     score = 0
     reasons = []
+    ml = ml or {}
+    # ── ML Score (0-30 points) ─────────────────────────────
+    ml_ready = ml.get("ml_ready", False)
+    ml_score = ml.get("ml_score", 0.0)
 
-    # ── VirusTotal score (0–40 points) ────────────────────────
+    if ml_ready:
+        # Only add ML points if confidence is HIGH (>= 0.75)
+        # This reduces false positives like google.com
+        if ml_score >= 0.75:
+            ml_points = ml_score * 30
+            score += ml_points
+            reasons.append(
+                f"ML model flagged as phishing ({ml.get('ml_confidence')}% confidence)")
+        elif ml_score >= 0.5:
+            # Medium confidence — add half points, don't add to explanation
+            score += ml_score * 15
+    # ── VirusTotal (0-30 with ML, 0-40 without) ───────────
+    vt_weight = 30 if ml_ready else 40
     vt_malicious = vt.get("malicious_count", 0)
     vt_total = vt.get("total_vendors", 1)
-    vt_ratio = vt_malicious / vt_total  # what fraction of vendors flagged it
-    vt_score = min(vt_ratio * 40, 40)   # cap at 40
-    score += vt_score
+    vt_ratio = vt_malicious / vt_total
+    vt_points = min(vt_ratio * vt_weight, vt_weight)
+    score += vt_points
     if vt_malicious > 0:
         reasons.append(f"Flagged by {vt_malicious} VirusTotal vendors")
 
-    # ── Domain age score (0–25 points) ────────────────────────
-    # Very new domains are suspicious — phishers register fresh domains
+    # ── Domain age (0-20 with ML, 0-25 without) ───────────
+    age_weight = 20 if ml_ready else 25
     domain_age_days = whois.get("domain_age_days", 365)
     if domain_age_days < 7:
-        score += 25
+        score += age_weight
         reasons.append(f"Domain is only {domain_age_days} days old")
     elif domain_age_days < 30:
-        score += 15
+        score += age_weight * 0.6
         reasons.append(
             f"Domain is {domain_age_days} days old (recently registered)")
     elif domain_age_days < 90:
-        score += 5
+        score += age_weight * 0.2
 
-    # ── URLHaus blacklist (0–20 points) ───────────────────────
+    # ── URLHaus (0-10 with ML, 0-20 without) ─────────────
+    urlhaus_weight = 10 if ml_ready else 20
     if urlhaus.get("is_blacklisted", False):
-        score += 20
+        score += urlhaus_weight
         reasons.append("URL found in URLHaus malicious database")
 
-    # ── Typosquatting (0–15 points) ───────────────────────────
-    typo_match = typo.get("closest_domain", None)
-    typo_distance = typo.get("distance", 99)
-
+    # ── Typosquatting (0-10 with ML, 0-15 without) ────────
+    typo_weight = 10 if ml_ready else 15
     typo_is_squat = typo.get("is_typosquat", False)
+    typo_distance = typo.get("distance", 99)
+    typo_match = typo.get("closest_domain", None)
     if typo_is_squat and typo_distance <= 2:
-        score += 15
+        score += typo_weight
         reasons.append(
             f"URL resembles '{typo_match}' (possible typosquatting)")
     elif typo_is_squat and typo_distance <= 4:
-        score += 7
+        score += typo_weight * 0.5
 
-     # ── DNS anomalies (bonus points, up to 10) ────────────────
-# Shifts weight when ML model is added later
-    dns_suspicious = whois.get("dns_suspicious", False)
-    dns_flags = whois.get("dns_flags", [])
-
-    if dns_suspicious:
+    # ── DNS anomalies (bonus 0-10) ─────────────────────────
+    if whois.get("dns_suspicious", False):
         score += 10
-    for flag in dns_flags:
-        reasons.append(f"DNS: {flag}")
+        for flag in whois.get("dns_flags", []):
+            reasons.append(f"DNS: {flag}")
 
-    # ── Final score capped at 100 ─────────────────────────────
+    # ── Final score capped at 100 ─────────────────────────
     final_score = min(int(score), 100)
 
-    # ── Risk level label ──────────────────────────────────────
+    # ── Risk level ────────────────────────────────────────
     if final_score >= 75:
         level = "CRITICAL"
     elif final_score >= 50:
@@ -87,7 +118,6 @@ def calculate_risk(vt: dict, urlhaus: dict, whois: dict, typo: dict) -> dict:
     else:
         level = "LOW"
 
-    # ── Human-readable explanation ────────────────────────────
     explanation = ". ".join(
         reasons) if reasons else "No major threats detected"
 
@@ -96,4 +126,5 @@ def calculate_risk(vt: dict, urlhaus: dict, whois: dict, typo: dict) -> dict:
         "level": level,
         "prediction": "phishing" if final_score >= 50 else "safe",
         "explanation": explanation,
+        "ml_used": ml_ready
     }
