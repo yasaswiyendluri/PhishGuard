@@ -2,7 +2,7 @@
 // Runs every time user clicks the extension icon
 // Gets current tab URL → calls backend → fills in the UI
 
-const BACKEND_URL = "http://127.0.0.1:8000"; // change to production URL when deployed
+const BACKEND_URL = "http://127.0.0.1:8001"; // change to production URL when deployed
 const DASHBOARD_URL = "http://localhost:5173"; // your React dashboard URL
 
 // ── Grab all the DOM elements we'll update ──────────────
@@ -57,6 +57,7 @@ async function main() {
         const data = await response.json();
 
         // Step 3 — fill in the UI with real data
+        console.log(data);
         renderResult(data);
 
         // Step 4 — save scan_id to chrome storage for dashboard link

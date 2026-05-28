@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import Auth from "./pages/Auth"
 import Dashboard from "./pages/Dashboard"
 import Reports from "./pages/Reports"
+import Report from "./pages/Report"
 import Analytics from "./pages/Analytics"
 
 function App() {
@@ -27,6 +28,12 @@ function App() {
               <ProtectedRoute>
                 <Reports />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report/:scan_id"
+            element={
+                <Report />
             }
           />
           <Route

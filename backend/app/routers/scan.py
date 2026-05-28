@@ -86,7 +86,7 @@ async def scan_url(
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-    payload = enrich_scan_ml_fields(payload)
+    #payload = enrich_scan_ml_fields(payload)
     # await save_scan(payload)
     await save_scan(copy.deepcopy(payload))
     return payload
