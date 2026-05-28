@@ -30,7 +30,13 @@ async function main() {
         const url = tab.url;
 
         // Don't scan chrome:// or edge:// internal pages
-        if (!url || url.startsWith("chrome://") || url.startsWith("edge://")) {
+        if (
+            !url ||
+            url.startsWith("chrome://") ||
+            url.startsWith("edge://") ||
+            url.startsWith("chrome-extension://") ||
+            url.startsWith("about:")
+        ) {
             showError("Cannot scan browser internal pages.");
             return;
         }
@@ -55,6 +61,7 @@ async function main() {
 
         // Step 4 — save scan_id to chrome storage for dashboard link
         chrome.storage.local.set({ lastScanId: data.scan_id });
+
         chrome.runtime.sendMessage({
             type: "SCAN_RESULT",
             tabId: tab.id,
