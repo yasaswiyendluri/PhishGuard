@@ -46,9 +46,13 @@ async function main() {
         domainName.textContent = domain;
 
         // Step 2 — call your FastAPI backend
+        const token= localStorage.getItem("phishguard_token");
+
         const response = await fetch(`${BACKEND_URL}/api/scan`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json",
+                       "Authorization": `Bearer ${token}`
+              },
             body: JSON.stringify({ url }),
         });
 
