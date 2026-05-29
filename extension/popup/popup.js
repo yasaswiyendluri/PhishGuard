@@ -2,8 +2,8 @@
 // Runs every time user clicks the extension icon
 // Gets current tab URL → calls backend → fills in the UI
 
-const BACKEND_URL = "https://phishguard-10mf.onrender.com"; // change to production URL when deployed
-const DASHBOARD_URL = "http://localhost:5173"; // your React dashboard URL
+const BACKEND_URL = "https://phishguard-10mf.onrender.com";
+const DASHBOARD_URL = "https://phish-guard-sooty.vercel.app";
 
 // ── Grab all the DOM elements we'll update ──────────────
 const header = document.getElementById("header");
