@@ -44,6 +44,14 @@ async def scan_url(
         get_whois_dns(body.url),
         check_typosquatting(body.url),
     )
+    if (
+        ml_result.get("ml_score", 0) >= 0.7
+        and vt_result.get("malicious_count", 0) < 5
+    ):
+
+        await asyncio.sleep(3)
+
+        vt_result = await check_virustotal(clean_url)
 
     risk_data = calculate_risk(
         vt=vt_result,

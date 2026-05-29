@@ -5,6 +5,7 @@
 import httpx
 import base64
 from app.core.config import VIRUSTOTAL_API_KEY
+import asyncio
 
 
 async def check_virustotal(url: str) -> dict:
@@ -32,17 +33,25 @@ async def check_virustotal(url: str) -> dict:
                 data={"url": url}  # sent as form data, not JSON
             )
             submit_response.raise_for_status()
-            analysis_id = submit_response.json()["data"]["id"]
-
+            # Give VT a moment to register the URL
+            await asyncio.sleep(1)
             # ── Step 2: Fetch analysis results ────────────────
-            # URL id for GET = base64 encode of the url (no padding)
             url_id = base64.urlsafe_b64encode(
-                url.encode()).decode().rstrip("=")
+                url.encode()
+            ).decode().rstrip("=")
 
-            result_response = await client.get(
-                f"https://www.virustotal.com/api/v3/urls/{url_id}",
-                headers=headers,
-            )
+            # Retry because VT may not have indexed the URL immediately
+            for _ in range(3):
+                result_response = await client.get(
+                    f"https://www.virustotal.com/api/v3/urls/{url_id}",
+                    headers=headers,
+                )
+
+                if result_response.status_code == 200:
+                    break
+
+                await asyncio.sleep(1)
+
             result_response.raise_for_status()
             data = result_response.json()
 
