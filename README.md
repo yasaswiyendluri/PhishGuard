@@ -8,9 +8,7 @@ PhishGuard detects phishing URLs in real time by combining a trained Machine Lea
 
 ## Live Links
 
-|               |                                      |
-| ------------- | ------------------------------------ |
-| **Dashboard** | https://phish-guard-sooty.vercel.app |
+**Dashboard** https://phish-guard-sooty.vercel.app
 
 ---
 
